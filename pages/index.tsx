@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 interface Square {
   bomb: boolean;
   checked: boolean;
+  index: number;
+  display: number;
 }
 
 const WIDTH = 20;
 const HEIGHT = 10;
-const BOMB_WEIGHT = 0.3;
+const BOMB_WEIGHT = 0.1;
 
 export default function Home() {
   const [board, setBoard] = useState<Square[][]>([]);
@@ -20,7 +22,9 @@ export default function Home() {
       for (let x = 0; x < WIDTH; x++) {
         row.push({
           bomb: Math.random() < BOMB_WEIGHT,
-          checked: false
+          checked: false,
+          index: y * WIDTH + x,
+          display: -1,
         });
       }
       temp.push(row)
@@ -28,6 +32,53 @@ export default function Home() {
 
     setBoard(temp)
   }, [])
+
+  const handleClick = (index) => {
+    let copy = JSON.parse(JSON.stringify(board));
+    let [item, x, y] = indexToItem(index, copy);
+
+    let count = getCount(x, y);
+
+    item.display = count;
+
+     if (item.bomb) {
+       item.display = 10;
+     }
+
+    if (count == 0) {
+      expandBoard(x, y, copy);
+    }
+
+    setBoard(copy);
+  }
+
+  const getCount = (x, y) => {
+    let count = 0;
+    for (let x1 = Math.max(x - 1, 0); x1 < x + 2 && x1 < WIDTH; x1++) {
+      for (let y1 = Math.max(y - 1, 0); y1 < y + 2 && y1 < HEIGHT; y1++) {
+        if (board[y1][x1].bomb) {
+          count++;
+        }
+      }
+    }
+    
+    return count
+  }
+  
+  const expandBoard = (x: number, y: number, board: Square[][]) => {
+    for (let x1 = Math.max(x - 1, 0); x1 < x + 2 && x1 < WIDTH; x1++) {
+      for (let y1 = Math.max(y - 1, 0); y1 < y + 2 && y1 < HEIGHT; y1++) {
+        if (!board[y1][x1].bomb && board[y1][x1].display == -1) {
+          let count = getCount(x1, y1);
+          board[y1][x1].display = count;
+
+          if (count == 0 && !(x1 == x && y1 == y)) {
+            expandBoard(x1, y1, board);
+          }
+        }
+      }
+    }
+  }
 
   return (
     <div>
@@ -39,25 +90,31 @@ export default function Home() {
 
       <main className="flex flex-col">
         {board.map((item) => (
-          <Row row={item} />
+          <Row row={item} onClick={handleClick} />
         ))}
       </main>
     </div>
   )
 }
 
-function Row(props: { row: Square[] }) {
+function Row(props: { row: Square[]; onClick: (index: number) => void }) {
   return (
     <div className="flex flex-row">
       {props.row.map((item) => (
-        <Square data={item} />
+        <Square data={item} onClick={props.onClick} />
       ))}
     </div>
   );
 }
 
-function Square(props: { data: Square }) {
+function Square(props: { data: Square; onClick: (index: number) => void }) {
   return (
-    <div className="w-8 h-8 m-1 bg-blue-500 hover:bg-blue-400 rounded text-center grid place-content-center text-white cursor-pointer">{props.data.bomb ? "1" : "0"}</div>
+    <div className={`w-8 h-8 m-1 ${props.data.display > -1 ? "bg-blue-400" : "bg-blue-500" } hover:bg-blue-400 rounded text-center grid place-content-center text-white cursor-pointer`} onClick={() => props.onClick(props.data.index)}>{props.data.display > 0 ? props.data.display : ""}</div>
   )
+}
+
+function indexToItem(index: number, board: Square[][]): [Square, number, number] {
+  let y = Math.floor(index / WIDTH);
+  let x = index - y * WIDTH;
+  return [board[y][x], x, y]
 }
