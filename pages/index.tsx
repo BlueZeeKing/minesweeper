@@ -1,5 +1,7 @@
 import Head from 'next/head'
 import { useState, useEffect } from 'react'
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFlag } from "@fortawesome/free-solid-svg-icons";
 
 interface Square {
   bomb: boolean;
@@ -10,47 +12,57 @@ interface Square {
 
 const WIDTH = 20;
 const HEIGHT = 10;
-const BOMB_WEIGHT = 0.1;
+const BOMB_WEIGHT = 0.25;
 
-export default function Home() {
-  const [board, setBoard] = useState<Square[][]>([]);
+let temp: Square[][] = [];
 
-  useEffect(() => {
-    let temp: Square[][] = []
-    for (let y = 0; y < HEIGHT; y++) {
-      let row: Square[] = []
-      for (let x = 0; x < WIDTH; x++) {
-        row.push({
-          bomb: Math.random() < BOMB_WEIGHT,
-          checked: false,
-          index: y * WIDTH + x,
-          display: -1,
-        });
-      }
-      temp.push(row)
-    }
+for (let y = 0; y < HEIGHT; y++) {
+  let row: Square[] = [];
+  for (let x = 0; x < WIDTH; x++) {
+    row.push({
+      bomb: Math.random() < BOMB_WEIGHT,
+      checked: false,
+      index: y * WIDTH + x,
+      display: -1,
+    });
+  }
+  temp.push(row);
+}
 
-    setBoard(temp)
-  }, [])
+export default function App() {
+  const [board, setBoard] = useState<Square[][]>(temp);
 
   const handleClick = (index) => {
     let copy = JSON.parse(JSON.stringify(board));
     let [item, x, y] = indexToItem(index, copy);
 
-    let count = getCount(x, y);
+    if (!item.checked) {
+      let count = getCount(x, y);
 
-    item.display = count;
+      item.display = count;
 
-     if (item.bomb) {
-       item.display = 10;
-     }
+      if (item.bomb) {
+        item.display = 10;
+      }
 
-    if (count == 0) {
-      expandBoard(x, y, copy);
+      if (count == 0) {
+        expandBoard(x, y, copy);
+      }
+
+      setBoard(copy);
+    }
+  }
+
+  const handleRightClick = (index) => {
+    let copy = JSON.parse(JSON.stringify(board));
+    let [item, x, y] = indexToItem(index, copy);
+
+    if (item.display == -1) {
+      item.checked = !item.checked
     }
 
     setBoard(copy);
-  }
+  };
 
   const getCount = (x, y) => {
     let count = 0;
@@ -88,29 +100,57 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="flex flex-col">
-        {board.map((item) => (
-          <Row row={item} onClick={handleClick} />
+      <main className="flex flex-col w-full p-1">
+        {board.map((item, index) => (
+          <Row
+            key={index}
+            row={item}
+            onClick={handleClick}
+            onRightClick={handleRightClick}
+          />
         ))}
       </main>
     </div>
-  )
+  );
 }
 
-function Row(props: { row: Square[]; onClick: (index: number) => void }) {
+function Row(props: { row: Square[]; onClick: (index: number) => void; onRightClick: (index: number) => void }) {
   return (
-    <div className="flex flex-row">
-      {props.row.map((item) => (
-        <Square data={item} onClick={props.onClick} />
+    <div className="flex flex-row w-full">
+      {props.row.map((item, index) => (
+        <Square key={index} data={item} onClick={props.onClick} onRightClick={props.onRightClick} />
       ))}
     </div>
   );
 }
 
-function Square(props: { data: Square; onClick: (index: number) => void }) {
+function Square(props: {
+  data: Square;
+  onClick: (index: number) => void;
+  onRightClick: (index: number) => void;
+}) {
   return (
-    <div className={`w-8 h-8 m-1 ${props.data.display > -1 ? "bg-blue-400" : "bg-blue-500" } hover:bg-blue-400 rounded text-center grid place-content-center text-white cursor-pointer`} onClick={() => props.onClick(props.data.index)}>{props.data.display > 0 ? props.data.display : ""}</div>
-  )
+    <div
+      className={`w-full aspect-square m-1 ${
+        props.data.display > -1 ? "bg-blue-400" : "bg-blue-500"
+      } hover:bg-blue-400 rounded text-center text-white ${
+        props.data.display > -1 ? "cursor-default" : "cursor-pointer"
+      } grid place-content-center text-xl lg:text-2xl xl:text-4xl`}
+      onClick={() => props.onClick(props.data.index)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        props.onRightClick(props.data.index);
+      }}
+    >
+      {props.data.checked ? (
+        <FontAwesomeIcon className="w-4/5 h-4/5 margin-auto" icon={faFlag} />
+      ) : props.data.display > 0 ? (
+        props.data.display
+      ) : (
+        ""
+      )}
+    </div>
+  );
 }
 
 function indexToItem(index: number, board: Square[][]): [Square, number, number] {
