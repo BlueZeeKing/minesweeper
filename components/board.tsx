@@ -4,7 +4,7 @@ import Square from "../util/square";
 
 const WIDTH = 20;
 const HEIGHT = 10;
-const BOMB_WEIGHT = 0.25;
+const BOMB_WEIGHT = 0.13;
 
 let temp: Square[][] = [];
 
